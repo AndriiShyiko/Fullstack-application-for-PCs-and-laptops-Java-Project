@@ -57,7 +57,8 @@ public class Sidebar extends JPanel
 
         navPanel.add(createNavButton("Settings"));
         navPanel.add(Box.createRigidArea(new Dimension(0, 6)));
-
+        navPanel.add(createNavButton("My Bookings"));
+        navPanel.add(Box.createRigidArea(new Dimension(0, 6)));
         navPanel.add(createNavButton("Logout"));
 
         add(navPanel, BorderLayout.CENTER);
@@ -77,7 +78,7 @@ public class Sidebar extends JPanel
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 if (getModel().isRollover()) 
                 {
-                    g2.setColor(new Color(200, 160, 80, 30)); // subtle gold hover
+                    g2.setColor(new Color(200, 160, 80, 30)); // gold hover
                     g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
                 }
                 g2.dispose();
@@ -118,7 +119,10 @@ public class Sidebar extends JPanel
                 );
                 if (choice == JOptionPane.YES_OPTION) 
                 {
+                    // dispose of this GUI
                     SwingUtilities.getWindowAncestor(this).dispose();
+
+                    // launch the new GUI
                     new LoginFormGUI().setVisible(true);
                 }
             } 
@@ -129,6 +133,14 @@ public class Sidebar extends JPanel
 
                 // launch the new GUI
                 new Settings().setVisible(true);
+            }
+            else if (text.contains("My Bookings")) 
+            {
+                // dispose of this GUI
+                SwingUtilities.getWindowAncestor(this).dispose();
+
+                // launch the new GUI
+                new MyBookingsPage().setVisible(true);
             }
         });
 

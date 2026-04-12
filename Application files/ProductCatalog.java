@@ -60,15 +60,35 @@ public class ProductCatalog extends MainFrame
         topBar.add(cartBtn, BorderLayout.EAST);
         contentArea.add(topBar, BorderLayout.NORTH);
  
-        // Grid panel — wraps cards into rows automatically
-        JPanel gridPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 16));
+        // Grid panel wraps cards into rows automatically
+        // overrides preferred size so scroll pane knows the true wrapped height
+        JPanel gridPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 16))
+        {
+            @Override
+            public Dimension getPreferredSize()
+            {
+                // get the width available inside the scroll pane viewport
+                int width = getParent() != null ? getParent().getWidth() : super.getPreferredSize().width;
+
+                // letting FlowLayout calculate the real wrapped height for that width
+                java.awt.FlowLayout layout = (java.awt.FlowLayout) getLayout();
+                int height = layout.preferredLayoutSize(this).height;
+
+                // recalculate with constrained width
+                int cols = Math.max(1, (width - 24) / (200 + 16));
+                int rows = (int) Math.ceil((double) getComponentCount() / cols);
+                height   = rows * (280 + 16) + 24;
+
+                return new Dimension(width, height);
+            }
+        };
         gridPanel.setBackground(CommonConstants.PRIMARY_COLOR);
         gridPanel.setBorder(BorderFactory.createEmptyBorder(0, 12, 12, 12));
  
         // Load in-stock products from DB into the grid
         loadProducts(gridPanel);
  
-        // Scroll pane — handles large numbers of products
+        // Scroll pane handles large numbers of products
         JScrollPane scrollPane = new JScrollPane(gridPanel);
         scrollPane.setBorder(null);
         scrollPane.setBackground(CommonConstants.PRIMARY_COLOR);
@@ -89,7 +109,7 @@ public class ProductCatalog extends MainFrame
             );
  
             PreparedStatement fetchProducts = con.prepareStatement
-            ("SELECT id, title, price, image_path, description FROM " + CommonConstants.DB_ITEMS_TABLE + " WHERE in_stock = TRUE");
+            ("SELECT id, title, price, image_path, description, is_bookable FROM " + CommonConstants.DB_ITEMS_TABLE + " WHERE in_stock = TRUE");
  
             ResultSet rs = fetchProducts.executeQuery();
  
@@ -104,7 +124,8 @@ public class ProductCatalog extends MainFrame
                     rs.getString("title"),
                     rs.getDouble("price"),
                     rs.getString("image_path"),
-                    rs.getString("description")
+                    rs.getString("description"),
+                    rs.getBoolean("is_bookable")
                 );
  
                 gridPanel.add(new ProductCard(product));

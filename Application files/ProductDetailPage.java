@@ -4,6 +4,9 @@ import db.MyJDBC;
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
+import java.util.Calendar;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class ProductDetailPage extends MainFrame
 {
@@ -65,7 +68,7 @@ public class ProductDetailPage extends MainFrame
         // Price
         JLabel priceLabel = new JLabel(String.format("$%.2f", product.getPrice()));
         priceLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
-        priceLabel.setForeground(new Color(200, 160, 80));
+        priceLabel.setForeground(CommonConstants.TEXT_COLOR);
         priceLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         priceLabel.setBorder(BorderFactory.createEmptyBorder(8, 0, 16, 0));
 
@@ -82,11 +85,52 @@ public class ProductDetailPage extends MainFrame
         descArea.setMaximumSize(new Dimension(380, Integer.MAX_VALUE));
         descArea.setBorder(BorderFactory.createEmptyBorder(0, 0, 24, 0));
 
-        // ── Add to Cart button 
+        // date picker shown only for bookable items
+        // JSpinner with SpinnerDateModel - standard Swing date selector
+        JSpinner datePicker = null;
+
+        if (product.isBookable())
+        {
+            JLabel dateHeading = new JLabel("Select Booking Date");
+            dateHeading.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            dateHeading.setForeground(CommonConstants.TEXT_COLOR);
+            dateHeading.setAlignmentX(Component.LEFT_ALIGNMENT);
+ 
+            // start from tomorrow so users cannot book in the past
+            Calendar tomorrow = Calendar.getInstance();
+            tomorrow.add(Calendar.DAY_OF_MONTH, 1);
+ 
+            SpinnerDateModel dateModel = new SpinnerDateModel
+            (
+                tomorrow.getTime(), // initial value: tomorrow
+                tomorrow.getTime(), // minimum: tomorrow
+                null,           // no maximum date
+                Calendar.DAY_OF_MONTH
+            );
+ 
+            datePicker = new JSpinner(dateModel);
+            JSpinner.DateEditor dateEditor = new JSpinner.DateEditor(datePicker, "dd / MM / yyyy");
+            datePicker.setEditor(dateEditor);
+            datePicker.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+            datePicker.setBackground(new Color(30, 30, 30));
+            datePicker.setForeground(Color.WHITE);
+            datePicker.setMaximumSize(new Dimension(180, 36));
+            datePicker.setAlignmentX(Component.LEFT_ALIGNMENT);
+ 
+            infoPanel.add(dateHeading);
+            infoPanel.add(Box.createRigidArea(new Dimension(0, 6)));
+            infoPanel.add(datePicker);
+            infoPanel.add(Box.createRigidArea(new Dimension(0, 16)));
+        }
+ 
+        // fixed reference of the datePicker to use inside the logic
+        final JSpinner finalDatePicker = datePicker;
+
+        // Add to Cart button 
         JButton addToCartBtn = new JButton("+  Add to Cart");
         addToCartBtn.setFont(new Font("Segoe UI", Font.BOLD, 14));
         addToCartBtn.setForeground(Color.BLACK);
-        addToCartBtn.setBackground(new Color(200, 160, 80));
+        addToCartBtn.setBackground(CommonConstants.TEXT_COLOR);
         addToCartBtn.setBorderPainted(false);
         addToCartBtn.setFocusPainted(false);
         addToCartBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -94,36 +138,63 @@ public class ProductDetailPage extends MainFrame
         addToCartBtn.setMaximumSize(new Dimension(180, 42));
         addToCartBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        addToCartBtn.addActionListener(e -> 
+        addToCartBtn.addActionListener(e ->
         {
-            boolean added = MyJDBC.addToCart
-            (
-                CommonConstants.currentUser,
-                product.getId(),
-                product.getTitle(),
-                product.getPrice()
-            );
-
+            boolean added;
+ 
+            // bookable items go through addBookableToCart with the chosen date
+            if (product.isBookable())
+            {
+                Date selectedDate = (Date) finalDatePicker.getValue();
+                String formattedDate = new SimpleDateFormat("yyyy-MM-dd").format(selectedDate);
+ 
+                added = MyJDBC.addBookableToCart
+                (
+                    CommonConstants.currentUser,
+                    product.getId(),
+                    product.getTitle(),
+                    product.getPrice(),
+                    formattedDate
+                );
+            }
+            else
+            {
+                // regular product - original addToCart call unchanged
+                added = MyJDBC.addToCart
+                (
+                    CommonConstants.currentUser,
+                    product.getId(),
+                    product.getTitle(),
+                    product.getPrice()
+                );
+            }
+ 
             if (added) 
             {
-                JOptionPane.showMessageDialog(this,
+                JOptionPane.showMessageDialog
+                (
+                    this,
                     product.getTitle() + " added to cart!",
                     "Added",
-                    JOptionPane.INFORMATION_MESSAGE);
+                    JOptionPane.INFORMATION_MESSAGE
+                );
             } 
             else 
             {
-                JOptionPane.showMessageDialog(this,
+                JOptionPane.showMessageDialog
+                (
+                    this,
                     "Could not add to cart. Please try again.",
                     "Error",
-                    JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.ERROR_MESSAGE
+                );
             }
         });
 
         // View Cart button 
         JButton viewCartBtn = new JButton("View Cart");
         viewCartBtn.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        viewCartBtn.setForeground(new Color(200, 160, 80));
+        viewCartBtn.setForeground(CommonConstants.TEXT_COLOR);
         viewCartBtn.setBackground(new Color(40, 40, 40));
         viewCartBtn.setBorderPainted(false);
         viewCartBtn.setFocusPainted(false);
@@ -154,10 +225,10 @@ public class ProductDetailPage extends MainFrame
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) 
             {
-
+                // dispose of this GUI
                 dispose();
 
-
+                // launch the new GUI
                 new ProductCatalog().setVisible(true);
             }
             @Override

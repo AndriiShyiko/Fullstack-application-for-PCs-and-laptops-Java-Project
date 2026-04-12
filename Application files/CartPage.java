@@ -9,7 +9,7 @@ public class CartPage extends MainFrame
 {
     public CartPage()
     {
-        super("Blade Forge Shop — Shopping Cart");
+        super("Blade Forge Shop - Shopping Cart");
         setLayout(new BorderLayout());
         addGuiComponents();
     }
@@ -36,7 +36,7 @@ public class CartPage extends MainFrame
         itemsPanel.setBackground(CommonConstants.PRIMARY_COLOR);
         itemsPanel.setBorder(BorderFactory.createEmptyBorder(0, 28, 0, 28));
 
-        // Total label - updated when items are removed
+        // Total label updated when items are removed
         JLabel totalLabel = new JLabel();
         totalLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
         totalLabel.setForeground(Color.WHITE);
@@ -73,7 +73,10 @@ public class CartPage extends MainFrame
         continueBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         continueBtn.addActionListener(e -> 
         {
+            // dispose of this gui
             dispose();
+
+            // launch new GUI
             new ProductCatalog().setVisible(true);
         });
 
@@ -145,6 +148,7 @@ public class CartPage extends MainFrame
                     PreparedStatement delivStmt = con.prepareStatement
                     ("SELECT d.price FROM delivery d JOIN " + CommonConstants.DB_USERS_TABLE
                         + " u ON u.delivery_preference = d.name WHERE u.login_name = ?");
+
                     delivStmt.setString(1, CommonConstants.currentUser);
 
                     ResultSet delivRs = delivStmt.executeQuery();
@@ -174,7 +178,7 @@ public class CartPage extends MainFrame
         itemsPanel.repaint();
     }
 
-    // ── Builds a single row: title × qty | subtotal | Remove button ───────
+    // Builds a single row: title × qty | subtotal | Remove button
     private JPanel buildCartRow(int cartId, String title, int quantity, double subtotal, JPanel itemsPanel, JLabel totalLabel)
     {
         JPanel row = new JPanel(new BorderLayout(16, 0));
@@ -193,7 +197,7 @@ public class CartPage extends MainFrame
 
         JLabel subtotalLabel = new JLabel(String.format("$%.2f", subtotal));
         subtotalLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        subtotalLabel.setForeground(new Color(200, 160, 80));
+        subtotalLabel.setForeground(CommonConstants.TEXT_COLOR);
         subtotalLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
         JButton removeBtn = new JButton("Remove");

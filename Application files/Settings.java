@@ -32,20 +32,20 @@ public class Settings extends MainFrame
         JPanel contentArea = new JPanel(new BorderLayout());
         contentArea.setBackground(CommonConstants.PRIMARY_COLOR);
 
-        // heading -----------
+        // heading
         JLabel heading = new JLabel("Settings & Personal Details");
         heading.setFont(new Font("Segoe UI", Font.BOLD, 22));
         heading.setForeground(CommonConstants.TEXT_COLOR);
         heading.setBorder(BorderFactory.createEmptyBorder(24, 28, 8, 28));
         contentArea.add(heading, BorderLayout.NORTH);
 
-        // Create the panel -----------
+        // Create the panel
         JPanel formWrapper = new JPanel();
         formWrapper.setLayout(new BoxLayout(formWrapper, BoxLayout.Y_AXIS));
         formWrapper.setBackground(CommonConstants.PRIMARY_COLOR);
         formWrapper.setBorder(BorderFactory.createEmptyBorder(8, 28, 28, 28));
 
-        // load user data -----------
+        // load user data
         // [0]=login_name [1]=password [2]=email [3]=address [4]=delivery_preference
         String[] details = MyJDBC.getUserDetails(CommonConstants.currentUser);
         String currentUsername = details != null ? details[0] : "";
@@ -54,7 +54,7 @@ public class Settings extends MainFrame
         String currentAddress = details != null ? details[3] : "";
         String currentDelivery = details != null ? details[4] : "standard";
 
-        // Credentials section -----------
+        // Credentials section
         formWrapper.add(sectionLabel("Account Credentials"));
         formWrapper.add(Box.createRigidArea(new Dimension(0, 10)));
 
@@ -62,7 +62,7 @@ public class Settings extends MainFrame
         formWrapper.add(fieldRow("Username", usernameField));
         formWrapper.add(Box.createRigidArea(new Dimension(0, 12)));
 
-        // Password chunk -----------
+        // Password chunk
         passwordField = new JPasswordField(currentPassword);
         stylePasswordField(passwordField);
         JButton toggleBtn = new JButton("Show");
@@ -84,7 +84,7 @@ public class Settings extends MainFrame
         formWrapper.add(passwordRow);
         formWrapper.add(Box.createRigidArea(new Dimension(0, 24)));
 
-        // Contact section -----------
+        // Contact section
         formWrapper.add(sectionLabel("Contact Information"));
         formWrapper.add(Box.createRigidArea(new Dimension(0, 10)));
 
@@ -96,7 +96,7 @@ public class Settings extends MainFrame
         formWrapper.add(fieldRow("Address", addressField));
         formWrapper.add(Box.createRigidArea(new Dimension(0, 24)));
 
-        // Delivery preference chunk -----------
+        // Delivery preference chunk
         formWrapper.add(sectionLabel("Delivery Preference"));
         formWrapper.add(Box.createRigidArea(new Dimension(0, 10)));
 
@@ -124,7 +124,7 @@ public class Settings extends MainFrame
         formWrapper.add(deliveryPanel);
         formWrapper.add(Box.createRigidArea(new Dimension(0, 32)));
 
-        // Save changes button -----------
+        // Save changes button
         JButton saveBtn = new JButton("Save Changes");
         saveBtn.setFont(new Font("Segoe UI", Font.BOLD, 14));
         saveBtn.setForeground(Color.BLACK);
@@ -140,7 +140,7 @@ public class Settings extends MainFrame
         formWrapper.add(saveBtn);
         formWrapper.add(Box.createRigidArea(new Dimension(0, 40)));
 
-        // Divider -----------
+        // Divider
         JSeparator sep = new JSeparator();
         sep.setForeground(new Color(60, 60, 60));
         sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
@@ -148,7 +148,7 @@ public class Settings extends MainFrame
         formWrapper.add(sep);
         formWrapper.add(Box.createRigidArea(new Dimension(0, 24)));
 
-        // Delete account button -----------
+        // Delete account button
         JButton deleteBtn = new JButton("Delete Account");
         deleteBtn.setFont(new Font("Segoe UI", Font.BOLD, 14));
         deleteBtn.setForeground(Color.WHITE);
@@ -163,7 +163,7 @@ public class Settings extends MainFrame
         deleteBtn.addActionListener(e -> handleDelete());
         formWrapper.add(deleteBtn);
 
-        // Make panel scrollable -----------
+        // Make panel scrollable
         JScrollPane scrollPane = new JScrollPane(formWrapper);
         scrollPane.setBorder(null);
         scrollPane.setBackground(CommonConstants.PRIMARY_COLOR);
@@ -173,22 +173,25 @@ public class Settings extends MainFrame
         add(contentArea, BorderLayout.CENTER);
     }
 
-    // Action handlers -----------
+    // Action handlers
 
     private void handleSave()
     {
-        String newUsername  = usernameField.getText().trim();
-        String newPassword  = new String(passwordField.getPassword()).trim();
-        String newEmail     = emailField.getText().trim();
-        String newAddress   = addressField.getText().trim();
-        String newDelivery  = expressBtn.isSelected() ? "express" : "standard";
+        String newUsername = usernameField.getText().trim();
+        String newPassword = new String(passwordField.getPassword()).trim();
+        String newEmail = emailField.getText().trim();
+        String newAddress = addressField.getText().trim();
+        String newDelivery = expressBtn.isSelected() ? "express" : "standard";
 
         if (newUsername.isEmpty() || newPassword.isEmpty())
         {
-            JOptionPane.showMessageDialog(this,
+            JOptionPane.showMessageDialog
+            (
+                this,
                 "Username and password cannot be empty.",
                 "Validation Error",
-                JOptionPane.WARNING_MESSAGE);
+                JOptionPane.WARNING_MESSAGE
+            );
             return;
         }
 
@@ -197,12 +200,21 @@ public class Settings extends MainFrame
 
         if (success) 
         {
-            JOptionPane.showMessageDialog(this, "Details updated successfully!");
+            JOptionPane.showMessageDialog
+            (
+                this, 
+                "Details updated successfully!"
+            );
         } 
         else 
         {
-            JOptionPane.showMessageDialog(this, "Failed to update. Please try again.",
-                "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog
+            (
+                this, 
+                "Failed to update. Please try again.",
+                "Error",
+                JOptionPane.ERROR_MESSAGE
+            );
         }
     }
 
@@ -231,8 +243,13 @@ public class Settings extends MainFrame
             } 
             else 
             {
-                JOptionPane.showMessageDialog(this, "Failed to delete account.",
-                    "Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog
+                (
+                    this, 
+                    "Failed to delete account.",
+                    "Error", 
+                    JOptionPane.ERROR_MESSAGE
+                );
             }
         }
     }
@@ -284,9 +301,10 @@ public class Settings extends MainFrame
     private void styleToggleButton(JButton btn)
     {
         btn.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        btn.setForeground(new Color(200, 160, 80));
+        btn.setForeground(CommonConstants.TEXT_COLOR);
         btn.setBackground(new Color(40, 40, 40));
-        btn.setBorder(BorderFactory.createCompoundBorder(
+        btn.setBorder(BorderFactory.createCompoundBorder
+        (
             BorderFactory.createLineBorder(new Color(70, 70, 70)),
             BorderFactory.createEmptyBorder(6, 10, 6, 10)
         ));

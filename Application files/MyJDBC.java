@@ -151,6 +151,17 @@ public class MyJDBC
             stmt.setString(6, originalUsername);
  
             stmt.executeUpdate();
+
+            if (!originalUsername.equals(newUsername))
+                {
+                    PreparedStatement cartUpdate = con.prepareStatement
+                    ("UPDATE cart SET username = ? WHERE username = ?");
+
+                    cartUpdate.setString(1, newUsername);
+                    cartUpdate.setString(2, originalUsername);
+                    
+                    cartUpdate.executeUpdate();
+                }
  
             // keep currentUser in sync if username was changed
             CommonConstants.currentUser = newUsername;
@@ -173,6 +184,7 @@ public class MyJDBC
  
             PreparedStatement stmt = con.prepareStatement
             ("UPDATE " + CommonConstants.DB_USERS_TABLE + " SET deleted = 1 WHERE login_name = ?");
+
             stmt.setString(1, username);
  
             stmt.executeUpdate();
@@ -184,9 +196,6 @@ public class MyJDBC
         }
         return false;
     }
-
-
-
 
 
 
@@ -205,6 +214,7 @@ public class MyJDBC
             // check if item already in cart for this user
             PreparedStatement checkStmt = con.prepareStatement
             ("SELECT id, quantity FROM cart WHERE username = ? AND product_id = ?");
+
             checkStmt.setString(1, username);
             checkStmt.setInt(2, productId);
  
@@ -218,6 +228,7 @@ public class MyJDBC
  
                 PreparedStatement updateStmt = con.prepareStatement
                 ("UPDATE cart SET quantity = ? WHERE id = ?");
+
                 updateStmt.setInt(1, newQty);
                 updateStmt.setInt(2, cartId);
                 updateStmt.executeUpdate();
@@ -227,10 +238,12 @@ public class MyJDBC
                 // new item — insert row
                 PreparedStatement insertStmt = con.prepareStatement
                 ("INSERT INTO cart (username, product_id, product_title, price, quantity) VALUES (?,?,?,?,1)");
+                
                 insertStmt.setString(1, username);
                 insertStmt.setInt(2, productId);
                 insertStmt.setString(3, productTitle);
                 insertStmt.setDouble(4, price);
+
                 insertStmt.executeUpdate();
             }
  
@@ -253,7 +266,9 @@ public class MyJDBC
  
             PreparedStatement stmt = con.prepareStatement
             ("DELETE FROM cart WHERE id = ?");
+
             stmt.setInt(1, cartId);
+
             stmt.executeUpdate();
             return true;
         }
@@ -274,7 +289,9 @@ public class MyJDBC
  
             PreparedStatement stmt = con.prepareStatement
             ("DELETE FROM cart WHERE username = ?");
+
             stmt.setString(1, username);
+
             stmt.executeUpdate();
             return true;
         }
@@ -296,6 +313,7 @@ public class MyJDBC
             // get idusers and delivery_preference for this user
             PreparedStatement userStmt = con.prepareStatement
             ("SELECT idusers, delivery_preference FROM " + CommonConstants.DB_USERS_TABLE + " WHERE login_name = ?");
+            
             userStmt.setString(1, username);
  
             ResultSet userRs = userStmt.executeQuery();
@@ -311,6 +329,7 @@ public class MyJDBC
             // fetch delivery price by name from delivery table
             PreparedStatement deliveryStmt = con.prepareStatement
             ("SELECT price FROM delivery WHERE name = ?");
+
             deliveryStmt.setString(1, deliveryPreference);
  
             ResultSet deliveryRs = deliveryStmt.executeQuery();
@@ -324,7 +343,8 @@ public class MyJDBC
  
             // sum of the cart items
             PreparedStatement cartStmt = con.prepareStatement
-            ("SELECT product_title, price, quantity FROM cart WHERE username = ?");
+            ("SELECT product_title, price, quantity, booking_date FROM cart WHERE username = ?");
+
             cartStmt.setString(1, username);
  
             ResultSet cartRs = cartStmt.executeQuery();
@@ -336,6 +356,7 @@ public class MyJDBC
             String[] titles = new String[100];
             double[] prices = new double[100];
             int[] quantities = new int[100];
+            String[] bookingDates  = new String[100];
             int itemCount = 0;
  
             while (cartRs.next())
@@ -343,6 +364,8 @@ public class MyJDBC
                 titles[itemCount] = cartRs.getString("product_title");
                 prices[itemCount] = cartRs.getDouble("price");
                 quantities[itemCount] = cartRs.getInt("quantity");
+                bookingDates[itemCount] = cartRs.getString("booking_date");
+
                 subtotal += prices[itemCount] * quantities[itemCount];
                 itemCount++;
             }
@@ -356,11 +379,12 @@ public class MyJDBC
  
             // insert into orders + get id
             PreparedStatement orderStmt = con.prepareStatement
-            ("INSERT INTO orders (idusers, order_date, delivery_price, total) VALUES (?, NOW(), ?, ?)",
-                Statement.RETURN_GENERATED_KEYS);
+            ("INSERT INTO orders (idusers, order_date, delivery_price, total) VALUES (?, NOW(), ?, ?)", Statement.RETURN_GENERATED_KEYS);
+            
             orderStmt.setInt(1, idusers);
             orderStmt.setDouble(2, deliveryPrice);
             orderStmt.setDouble(3, grandTotal);
+            
             orderStmt.executeUpdate();
  
             ResultSet generatedKeys = orderStmt.getGeneratedKeys();
@@ -374,17 +398,36 @@ public class MyJDBC
  
             // insert one row per item into order_line
             PreparedStatement lineStmt = con.prepareStatement
-            ("INSERT INTO order_line (order_id, product_title, price, quantity) VALUES (?, ?, ?, ?)");
+            ("INSERT INTO order_line (order_id, product_title, price, quantity) VALUES (?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS); // take generated order_line id for booking FK
  
+            PreparedStatement bookingStmt = con.prepareStatement
+            ("INSERT INTO booking (idusers, order_line_id, product_title, booking_date) VALUES (?, ?, ?, ?)");
+
             for (int i = 0; i < itemCount; i++)
             {
                 lineStmt.setInt(1, orderId);
                 lineStmt.setString(2, titles[i]);
                 lineStmt.setDouble(3, prices[i]);
                 lineStmt.setInt(4, quantities[i]);
+
                 lineStmt.executeUpdate();
+
+                // if this cart item has a booking_date, create a booking row
+                if (bookingDates[i] != null)
+                {
+                    ResultSet lineKeys = lineStmt.getGeneratedKeys();
+                    if (lineKeys.next())
+                    {
+                        int orderLineId = lineKeys.getInt(1);
+                        bookingStmt.setInt(1, idusers);
+                        bookingStmt.setInt(2, orderLineId);
+                        bookingStmt.setString(3, titles[i]);
+                        bookingStmt.setString(4, bookingDates[i]);
+
+                        bookingStmt.executeUpdate();
+                    }
+                }
             }
- 
             // clear the cart
             clearCart(username);
  
@@ -396,5 +439,100 @@ public class MyJDBC
         }
  
         return -1.0;
+    }
+
+    // addBookableToCart() same as addToCart but also stores booking_date in cart row
+    // bookable items are always quantity of 1 so no increment logic needed
+    public static boolean addBookableToCart(String username, int productId, String productTitle, double price, String bookingDate)
+    {
+        try
+        {
+            Connection con = DriverManager.getConnection
+            (CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
+ 
+            // bookable items are always 1 per booking - replace if already in cart
+            PreparedStatement checkStmt = con.prepareStatement("SELECT id FROM cart WHERE username = ? AND product_id = ?");
+            checkStmt.setString(1, username);
+            checkStmt.setInt(2, productId);
+ 
+            ResultSet rs = checkStmt.executeQuery();
+ 
+            if (rs.next())
+            {
+                // already in cart - update booking date only
+                int cartId = rs.getInt("id");
+ 
+                PreparedStatement updateStmt = con.prepareStatement("UPDATE cart SET booking_date = ? WHERE id = ?");
+
+                updateStmt.setString(1, bookingDate);
+                updateStmt.setInt(2, cartId);
+
+                updateStmt.executeUpdate();
+            }
+            else
+            {
+                // it is a new bookable item - insert with booking_date and quantity fixed to 1 
+                PreparedStatement insertStmt = con.prepareStatement
+                ("INSERT INTO cart (username, product_id, product_title, price, quantity, booking_date) VALUES (?,?,?,?,1,?)");
+
+                insertStmt.setString(1, username);
+                insertStmt.setInt(2, productId);
+                insertStmt.setString(3, productTitle);
+                insertStmt.setDouble(4, price);
+                insertStmt.setString(5, bookingDate);
+
+                insertStmt.executeUpdate();
+            }
+ 
+            return true;
+        }
+        catch (SQLException e)
+        {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    // updateBookingDate() called from MyBookingsPage when user changes lesson date
+    public static boolean updateBookingDate(int bookingId, String newDate)
+    {
+        try
+        {
+            Connection con = DriverManager.getConnection
+            (CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
+ 
+            PreparedStatement stmt = con.prepareStatement("UPDATE booking SET booking_date = ? WHERE id = ?");
+
+            stmt.setString(1, newDate);
+            stmt.setInt(2, bookingId);
+            stmt.executeUpdate();
+            return true;
+        }
+        catch (SQLException e)
+        {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    // cancelBooking() deletes the booking row from DB
+    public static boolean cancelBooking(int bookingId)
+    {
+        try
+        {
+            Connection con = DriverManager.getConnection
+            (CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
+ 
+            PreparedStatement stmt = con.prepareStatement
+            ("DELETE FROM booking WHERE id = ?");
+            stmt.setInt(1, bookingId);
+            stmt.executeUpdate();
+            return true;
+        }
+        catch (SQLException e)
+        {
+            e.printStackTrace();
+        }
+        return false;
     }
 }

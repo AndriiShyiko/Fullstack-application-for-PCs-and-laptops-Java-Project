@@ -7,7 +7,7 @@ import java.io.File;
 public class ProductCard extends JPanel 
 {
 
-    private static final int CARD_WIDTH  = 200;
+    private static final int CARD_WIDTH = 200;
     private static final int CARD_HEIGHT = 280;
     private static final int IMAGE_HEIGHT = 160;
 
@@ -23,7 +23,7 @@ public class ProductCard extends JPanel
             BorderFactory.createEmptyBorder(10, 10, 12, 10)
         ));
 
-        // ── Product image ────────────────────────────────────────────
+        // Product image
         JButton imageBtn = new JButton();
         imageBtn.setPreferredSize(new Dimension(CARD_WIDTH - 20, IMAGE_HEIGHT));
         imageBtn.setBackground(new Color(40, 40, 40));
@@ -53,18 +53,18 @@ public class ProductCard extends JPanel
             new ProductDetailPage(product).setVisible(true);
         });
             
-        // ── Title ────────────────────────────────────────────────────
+        // Title
         JLabel titleLabel = new JLabel("<html><body style='width:170px'>" + product.getTitle() + "</body></html>");
         titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
         titleLabel.setForeground(Color.WHITE);
         titleLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 4, 0));
 
-        // ── Price ────────────────────────────────────────────────────
+        // Price
         JLabel priceLabel = new JLabel(String.format("$%.2f", product.getPrice()));
         priceLabel.setFont(new Font("Segoe UI", Font.BOLD, 15));
         priceLabel.setForeground(CommonConstants.TEXT_COLOR); // gold
 
-        // ── Bottom panel (title + price) ─────────────────────────────
+        // Bottom panel (title + price)
         JPanel infoPanel = new JPanel();
         infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
         infoPanel.setOpaque(false);
