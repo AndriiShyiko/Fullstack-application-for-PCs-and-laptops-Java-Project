@@ -57,7 +57,6 @@ public class MyJDBC
 
             ResultSet rs = checkUserExistence.executeQuery();
 
-            // check to see if the result set is empty
             // if it's empty it means that there was no data that contains the username (user does not exist)
             if(!rs.isBeforeFirst()) 
             {
@@ -74,8 +73,7 @@ public class MyJDBC
     {
         try
         {
-            Connection con = DriverManager.getConnection
-            (CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
+            Connection con = DriverManager.getConnection(CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
 
             PreparedStatement validateUser = con.prepareStatement
             ("SELECT * FROM " + CommonConstants.DB_USERS_TABLE + " WHERE login_name = ? AND password = ? AND deleted = false");
@@ -110,6 +108,7 @@ public class MyJDBC
  
             PreparedStatement stmt = con.prepareStatement
             ("SELECT login_name, password, email, address, delivery_preference FROM " + CommonConstants.DB_USERS_TABLE + " WHERE login_name = ?");
+            
             stmt.setString(1, username);
  
             ResultSet rs = stmt.executeQuery();
@@ -138,8 +137,7 @@ public class MyJDBC
     {
         try
         {
-            Connection con = DriverManager.getConnection
-            (CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
+            Connection con = DriverManager.getConnection(CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
  
             PreparedStatement stmt = con.prepareStatement
             ("UPDATE " + CommonConstants.DB_USERS_TABLE + " SET login_name = ?, password = ?, email = ?, address = ?, delivery_preference = ? WHERE login_name = ?");
@@ -179,8 +177,7 @@ public class MyJDBC
     {
         try
         {
-            Connection con = DriverManager.getConnection
-            (CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
+            Connection con = DriverManager.getConnection(CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
  
             PreparedStatement stmt = con.prepareStatement
             ("UPDATE " + CommonConstants.DB_USERS_TABLE + " SET deleted = 1 WHERE login_name = ?");
@@ -201,20 +198,17 @@ public class MyJDBC
 
     
     // Cart methods -------------------------------------------------
- 
+
     // add a product to the user's cart
     // if the same product is already in the cart, increment quantity instead
     public static boolean addToCart(String username, int productId, String productTitle, double price)
     {
         try
         {
-            Connection con = DriverManager.getConnection
-            (CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
+            Connection con = DriverManager.getConnection(CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
  
             // check if item already in cart for this user
-            PreparedStatement checkStmt = con.prepareStatement
-            ("SELECT id, quantity FROM cart WHERE username = ? AND product_id = ?");
-
+            PreparedStatement checkStmt = con.prepareStatement("SELECT id, quantity FROM cart WHERE username = ? AND product_id = ?");
             checkStmt.setString(1, username);
             checkStmt.setInt(2, productId);
  
@@ -222,16 +216,28 @@ public class MyJDBC
  
             if (rs.next())
             {
-                // already in cart — increment quantity
+                // already in cart - increment quantity
                 int newQty = rs.getInt("quantity") + 1;
                 int cartId = rs.getInt("id");
  
-                PreparedStatement updateStmt = con.prepareStatement
-                ("UPDATE cart SET quantity = ? WHERE id = ?");
-
+                PreparedStatement updateStmt = con.prepareStatement("UPDATE cart SET quantity = ? WHERE id = ?");
                 updateStmt.setInt(1, newQty);
                 updateStmt.setInt(2, cartId);
+
                 updateStmt.executeUpdate();
+
+                // SS-02: decrements stock quantity when item is added to cart
+                // if quantity hits 0, also flips in_stock to false
+                PreparedStatement stockStmt = con.prepareStatement
+                (
+                    "UPDATE " + CommonConstants.DB_ITEMS_TABLE +
+                    " SET stock_quantity = stock_quantity - 1," +
+                    " in_stock = CASE WHEN stock_quantity <= 0 THEN FALSE ELSE in_stock END" +
+                    " WHERE id = ? AND stock_quantity > 0"
+                );
+                stockStmt.setInt(1, productId);
+
+                stockStmt.executeUpdate();
             }
             else
             {
@@ -245,6 +251,19 @@ public class MyJDBC
                 insertStmt.setDouble(4, price);
 
                 insertStmt.executeUpdate();
+
+                // SS-02: decrements stock quantity when item is added to cart
+                // if quantity hits 0, also flips in_stock to false
+                PreparedStatement stockStmt = con.prepareStatement
+                (
+                    "UPDATE " + CommonConstants.DB_ITEMS_TABLE +
+                    " SET stock_quantity = stock_quantity - 1," +
+                    " in_stock = CASE WHEN stock_quantity <= 0 THEN FALSE ELSE in_stock END" +
+                    " WHERE id = ? AND stock_quantity > 0"
+                );
+                stockStmt.setInt(1, productId);
+
+                stockStmt.executeUpdate();
             }
  
             return true;
@@ -261,12 +280,20 @@ public class MyJDBC
     {
         try
         {
-            Connection con = DriverManager.getConnection
-            (CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
- 
-            PreparedStatement stmt = con.prepareStatement
-            ("DELETE FROM cart WHERE id = ?");
+            Connection con = DriverManager.getConnection(CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
 
+            // restore stock when item is removed from cart
+            PreparedStatement restoreStmt = con.prepareStatement
+            (
+                "UPDATE " + CommonConstants.DB_ITEMS_TABLE +
+                " SET stock_quantity = stock_quantity + 1, in_stock = TRUE" +
+                " WHERE id = (SELECT product_id FROM cart WHERE id = ?)"
+            );
+            restoreStmt.setInt(1, cartId);
+
+            restoreStmt.executeUpdate();
+
+            PreparedStatement stmt = con.prepareStatement("DELETE FROM cart WHERE id = ?");
             stmt.setInt(1, cartId);
 
             stmt.executeUpdate();
@@ -279,16 +306,14 @@ public class MyJDBC
         return false;
     }
  
-    // clear entire cart for a user (called after successful payment)
+    // clear entire cart (called after successful payment)
     public static boolean clearCart(String username)
     {
         try
         {
-            Connection con = DriverManager.getConnection
-            (CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
+            Connection con = DriverManager.getConnection(CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
  
-            PreparedStatement stmt = con.prepareStatement
-            ("DELETE FROM cart WHERE username = ?");
+            PreparedStatement stmt = con.prepareStatement("DELETE FROM cart WHERE username = ?");
 
             stmt.setString(1, username);
 
@@ -307,8 +332,7 @@ public class MyJDBC
     {
         try
         {
-            Connection con = DriverManager.getConnection
-            (CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
+            Connection con = DriverManager.getConnection(CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
  
             // get idusers and delivery_preference for this user
             PreparedStatement userStmt = con.prepareStatement
@@ -327,9 +351,7 @@ public class MyJDBC
             String deliveryPreference = userRs.getString("delivery_preference");
  
             // fetch delivery price by name from delivery table
-            PreparedStatement deliveryStmt = con.prepareStatement
-            ("SELECT price FROM delivery WHERE name = ?");
-
+            PreparedStatement deliveryStmt = con.prepareStatement("SELECT price FROM delivery WHERE name = ?");
             deliveryStmt.setString(1, deliveryPreference);
  
             ResultSet deliveryRs = deliveryStmt.executeQuery();
@@ -342,17 +364,15 @@ public class MyJDBC
             double deliveryPrice = deliveryRs.getDouble("price");
  
             // sum of the cart items
-            PreparedStatement cartStmt = con.prepareStatement
-            ("SELECT product_title, price, quantity, booking_date FROM cart WHERE username = ?");
-
+            PreparedStatement cartStmt = con.prepareStatement("SELECT product_title, price, quantity, booking_date FROM cart WHERE username = ?");
             cartStmt.setString(1, username);
  
             ResultSet cartRs = cartStmt.executeQuery();
  
             double subtotal = 0;
  
-            // store cart rows in parallel arrays
-            // loop once for the sum and for order_line inserts
+            // stores cart rows in parallel arrays
+            // loops once for the sum and for order_line inserts
             String[] titles = new String[100];
             double[] prices = new double[100];
             int[] quantities = new int[100];
@@ -441,14 +461,13 @@ public class MyJDBC
         return -1.0;
     }
 
-    // addBookableToCart() same as addToCart but also stores booking_date in cart row
+    // addBookableToCart() used same as addToCart but also stores booking_date in cart row
     // bookable items are always quantity of 1 so no increment logic needed
     public static boolean addBookableToCart(String username, int productId, String productTitle, double price, String bookingDate)
     {
         try
         {
-            Connection con = DriverManager.getConnection
-            (CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
+            Connection con = DriverManager.getConnection(CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
  
             // bookable items are always 1 per booking - replace if already in cart
             PreparedStatement checkStmt = con.prepareStatement("SELECT id FROM cart WHERE username = ? AND product_id = ?");
@@ -463,7 +482,6 @@ public class MyJDBC
                 int cartId = rs.getInt("id");
  
                 PreparedStatement updateStmt = con.prepareStatement("UPDATE cart SET booking_date = ? WHERE id = ?");
-
                 updateStmt.setString(1, bookingDate);
                 updateStmt.setInt(2, cartId);
 
@@ -482,6 +500,19 @@ public class MyJDBC
                 insertStmt.setString(5, bookingDate);
 
                 insertStmt.executeUpdate();
+
+                // SS-02: decrements stock quantity when item is added to cart
+                // if quantity hits 0, also flip in_stock to false
+                PreparedStatement stockStmt = con.prepareStatement
+                (
+                    "UPDATE " + CommonConstants.DB_ITEMS_TABLE +
+                    " SET stock_quantity = stock_quantity - 1," +
+                    " in_stock = CASE WHEN stock_quantity <= 0 THEN FALSE ELSE in_stock END" +
+                    " WHERE id = ? AND stock_quantity > 0"
+                );
+                stockStmt.setInt(1, productId);
+
+                stockStmt.executeUpdate();
             }
  
             return true;
@@ -498,13 +529,12 @@ public class MyJDBC
     {
         try
         {
-            Connection con = DriverManager.getConnection
-            (CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
+            Connection con = DriverManager.getConnection(CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
  
             PreparedStatement stmt = con.prepareStatement("UPDATE booking SET booking_date = ? WHERE id = ?");
-
             stmt.setString(1, newDate);
             stmt.setInt(2, bookingId);
+
             stmt.executeUpdate();
             return true;
         }
@@ -520,12 +550,65 @@ public class MyJDBC
     {
         try
         {
-            Connection con = DriverManager.getConnection
-            (CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
+            Connection con = DriverManager.getConnection(CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
  
-            PreparedStatement stmt = con.prepareStatement
-            ("DELETE FROM booking WHERE id = ?");
+            PreparedStatement stmt = con.prepareStatement("DELETE FROM booking WHERE id = ?");
             stmt.setInt(1, bookingId);
+
+            stmt.executeUpdate();
+            return true;
+        }
+        catch (SQLException e)
+        {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+
+    // Reviews methods -------------------------------------------------
+
+    // Get reviews for a specific product (max 100 reviews)
+    public static String[] getReviews(int itemId)
+    {
+        String[] reviewsArray = new String[100];
+        try
+        {
+            Connection con = DriverManager.getConnection(CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
+ 
+            PreparedStatement stmt = con.prepareStatement("SELECT username, review FROM reviews WHERE item_id = ?");
+            stmt.setInt(1, itemId);
+
+            ResultSet rs = stmt.executeQuery();
+ 
+            int count = 0;
+            while (rs.next() && count < 100)
+            {
+                // Format - "Username: The review text"
+                reviewsArray[count] = rs.getString("username") + ": " + rs.getString("review");
+                count++;
+            }
+        }
+        catch (SQLException e)
+        {
+            e.printStackTrace();
+        }
+        return reviewsArray;
+    }
+
+    // Add a new review
+    public static boolean addReview(String username, int itemId, String reviewText)
+    {
+        try
+        {
+            Connection con = DriverManager.getConnection(CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
+ 
+            PreparedStatement stmt = con.prepareStatement("INSERT INTO reviews (item_id, review, username) VALUES (?, ?, ?)");
+            
+            stmt.setInt(1, itemId);
+            stmt.setString(2, reviewText);
+            stmt.setString(3, username);
+            
             stmt.executeUpdate();
             return true;
         }
