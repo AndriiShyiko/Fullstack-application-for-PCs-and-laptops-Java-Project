@@ -61,7 +61,7 @@ public class ProductCatalog extends MainFrame
         contentArea.add(topBar, BorderLayout.NORTH);
  
         // Grid panel wraps cards into rows automatically
-        // overrides preferred size so scroll pane knows the true wrapped height
+        // + overrides preferred size so scroll pane knows the true wrapped height
         JPanel gridPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 16))
         {
             @Override
@@ -77,7 +77,7 @@ public class ProductCatalog extends MainFrame
                 // recalculate with constrained width
                 int cols = Math.max(1, (width - 24) / (200 + 16));
                 int rows = (int) Math.ceil((double) getComponentCount() / cols);
-                height   = rows * (280 + 16) + 24;
+                height = rows * (280 + 16) + 24;
 
                 return new Dimension(width, height);
             }
@@ -109,7 +109,7 @@ public class ProductCatalog extends MainFrame
             );
  
             PreparedStatement fetchProducts = con.prepareStatement
-            ("SELECT id, title, price, image_path, description, is_bookable FROM " + CommonConstants.DB_ITEMS_TABLE + " WHERE in_stock = TRUE");
+            ("SELECT id, title, price, image_path, description, is_bookable, stock_quantity FROM " + CommonConstants.DB_ITEMS_TABLE + " WHERE in_stock = TRUE");
  
             ResultSet rs = fetchProducts.executeQuery();
  
@@ -125,7 +125,8 @@ public class ProductCatalog extends MainFrame
                     rs.getDouble("price"),
                     rs.getString("image_path"),
                     rs.getString("description"),
-                    rs.getBoolean("is_bookable")
+                    rs.getBoolean("is_bookable"),
+                    rs.getInt("stock_quantity")
                 );
  
                 gridPanel.add(new ProductCard(product));

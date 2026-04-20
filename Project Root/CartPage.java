@@ -7,6 +7,8 @@ import java.sql.*;
 
 public class CartPage extends MainFrame
 {
+    private double currentSubtotal = 0; // tracked subtotal of the cart
+    
     public CartPage()
     {
         super("Blade Forge Shop - Shopping Cart");
@@ -107,8 +109,7 @@ public class CartPage extends MainFrame
             Connection con = DriverManager.getConnection
             (CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
 
-            PreparedStatement stmt = con.prepareStatement
-            ("SELECT id, product_title, price, quantity FROM cart WHERE username = ?");
+            PreparedStatement stmt = con.prepareStatement("SELECT id, product_title, price, quantity FROM cart WHERE username = ?");
             stmt.setString(1, CommonConstants.currentUser);
 
             ResultSet rs = stmt.executeQuery();
@@ -142,6 +143,7 @@ public class CartPage extends MainFrame
             }
             else
             {
+                currentSubtotal = total;
                 double deliveryPrice = 0;
                 try
                 {
@@ -153,7 +155,9 @@ public class CartPage extends MainFrame
 
                     ResultSet delivRs = delivStmt.executeQuery();
                     if (delivRs.next()) 
-                    {deliveryPrice = delivRs.getDouble("price");}
+                    {
+                        deliveryPrice = delivRs.getDouble("price");
+                    }
                 }
                 catch (SQLException ex) { ex.printStackTrace(); }
  
@@ -178,7 +182,7 @@ public class CartPage extends MainFrame
         itemsPanel.repaint();
     }
 
-    // Builds a single row: title × qty | subtotal | Remove button
+    // Builds a single row: title × qty \ subtotal \ Remove button
     private JPanel buildCartRow(int cartId, String title, int quantity, double subtotal, JPanel itemsPanel, JLabel totalLabel)
     {
         JPanel row = new JPanel(new BorderLayout(16, 0));
@@ -230,8 +234,7 @@ public class CartPage extends MainFrame
             Connection con = DriverManager.getConnection
             (CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
 
-            PreparedStatement stmt = con.prepareStatement
-            ("SELECT id FROM cart WHERE username = ? LIMIT 1");
+            PreparedStatement stmt = con.prepareStatement("SELECT id FROM cart WHERE username = ? LIMIT 1");
             stmt.setString(1, CommonConstants.currentUser);
 
             ResultSet rs = stmt.executeQuery();
@@ -260,6 +263,29 @@ public class CartPage extends MainFrame
         );
         if (confirm == JOptionPane.YES_OPTION)
         {
+            // capture delivery price before placeOrder clears the cart
+            double deliveryPrice = 0;
+            try
+            {
+                Connection con = DriverManager.getConnection
+                (CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
+
+                PreparedStatement ds = con.prepareStatement
+                (
+                    "SELECT d.price FROM delivery d JOIN " + CommonConstants.DB_USERS_TABLE +
+                    " u ON u.delivery_preference = d.name WHERE u.login_name = ?"
+                );
+                ds.setString(1, CommonConstants.currentUser);
+
+                ResultSet dr = ds.executeQuery();
+
+                if (dr.next()) deliveryPrice = dr.getDouble("price");
+            }
+            catch (SQLException ex) { ex.printStackTrace(); }
+
+            // show receipt BEFORE placeOrder wipes the cart
+            showReceipt(currentSubtotal  + deliveryPrice, deliveryPrice);
+
             double grandTotal = MyJDBC.placeOrder(CommonConstants.currentUser);
  
             if (grandTotal < 0)
@@ -284,5 +310,98 @@ public class CartPage extends MainFrame
             // launch the new GUI
             new ProductCatalog().setVisible(true);
         }
+    }
+
+    private void showReceipt(double grandTotal, double deliveryPrice)
+    {
+        // fetch cart contents to list in receipt
+        StringBuilder lines = new StringBuilder();
+        double subtotal = grandTotal - deliveryPrice;
+
+        try
+        {
+            Connection con = DriverManager.getConnection
+            (CommonConstants.DB_URL, CommonConstants.DB_USERNAME, CommonConstants.DB_PASSWORD);
+
+            PreparedStatement stmt = con.prepareStatement("SELECT product_title, price, quantity FROM cart WHERE username = ?");
+            stmt.setString(1, CommonConstants.currentUser);
+
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next())
+            {
+                lines.append(String.format
+                (
+                    "  %-30s x%d    $%.2f%n",
+                    rs.getString("product_title"),
+                    rs.getInt("quantity"),
+                    rs.getDouble("price") * rs.getInt("quantity")
+                ));
+            }
+        }
+        catch (SQLException e) { e.printStackTrace(); }
+
+        // build the receipt panel
+        JPanel receiptPanel = new JPanel();
+        receiptPanel.setLayout(new BoxLayout(receiptPanel, BoxLayout.Y_AXIS));
+        receiptPanel.setBackground(new Color(18, 18, 18));
+        receiptPanel.setBorder(BorderFactory.createEmptyBorder(24, 32, 24, 32));
+
+        // heading
+        JLabel heading = new JLabel("Order Confirmed");
+        heading.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        heading.setForeground(new Color(200, 160, 80));
+        heading.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel subheading = new JLabel("Thank you, " + CommonConstants.currentUser + ". Your order has been placed.");
+        subheading.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        subheading.setForeground(new Color(180, 180, 180));
+        subheading.setAlignmentX(Component.LEFT_ALIGNMENT);
+        subheading.setBorder(BorderFactory.createEmptyBorder(6, 0, 20, 0));
+
+        // items
+        JTextArea itemsArea = new JTextArea(lines.toString());
+        itemsArea.setFont(new Font("Courier New", Font.PLAIN, 13));
+        itemsArea.setForeground(Color.WHITE);
+        itemsArea.setBackground(new Color(28, 28, 28));
+        itemsArea.setEditable(false);
+        itemsArea.setFocusable(false);
+        itemsArea.setBorder(BorderFactory.createCompoundBorder
+        (
+            BorderFactory.createLineBorder(new Color(200, 160, 80, 50)),
+            BorderFactory.createEmptyBorder(10, 12, 10, 12)
+        ));
+        itemsArea.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        // totals
+        JLabel subtotalLabel = new JLabel(String.format("Subtotal:   $%.2f", subtotal));
+        JLabel deliveryLabel = new JLabel(String.format("Delivery:   $%.2f", deliveryPrice));
+        JLabel totalLabel = new JLabel(String.format("TOTAL:      $%.2f", grandTotal));
+
+        for (JLabel l : new JLabel[]{subtotalLabel, deliveryLabel, totalLabel})
+        {
+            l.setFont(new Font("Courier New", Font.PLAIN, 13));
+            l.setForeground(new Color(200, 200, 200));
+            l.setAlignmentX(Component.LEFT_ALIGNMENT);
+        }
+        totalLabel.setFont(new Font("Courier New", Font.BOLD, 14));
+        totalLabel.setForeground(new Color(200, 160, 80));
+
+        receiptPanel.add(heading);
+        receiptPanel.add(subheading);
+        receiptPanel.add(itemsArea);
+        receiptPanel.add(Box.createRigidArea(new Dimension(0, 16)));
+        receiptPanel.add(subtotalLabel);
+        receiptPanel.add(Box.createRigidArea(new Dimension(0, 4)));
+        receiptPanel.add(deliveryLabel);
+        receiptPanel.add(Box.createRigidArea(new Dimension(0, 4)));
+        receiptPanel.add(totalLabel);
+
+        JDialog dialog = new JDialog(this, "Order Receipt", true);
+        dialog.setContentPane(receiptPanel);
+        dialog.setSize(500, 380);
+        dialog.setLocationRelativeTo(this);
+        dialog.setBackground(new Color(18, 18, 18));
+        dialog.setVisible(true);
     }
 }

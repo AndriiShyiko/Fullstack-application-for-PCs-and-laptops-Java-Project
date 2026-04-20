@@ -256,6 +256,135 @@ public class ProductDetailPage extends MainFrame
         topSection.add(infoPanel,  BorderLayout.CENTER);
 
         contentArea.add(topSection, BorderLayout.NORTH);
+
+        // Review section
+        JPanel reviewSection = new JPanel(new BorderLayout(0, 10));
+        reviewSection.setOpaque(false);
+        reviewSection.setBorder(BorderFactory.createEmptyBorder(20, 0, 0, 0));
+
+        // Title
+        JLabel reviewHeading = new JLabel("Customer Reviews");
+        reviewHeading.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        reviewHeading.setForeground(Color.WHITE);
+        reviewSection.add(reviewHeading, BorderLayout.NORTH);
+
+        // Existing reviews
+        JTextArea reviewsDisplay = new JTextArea();
+        String[] existingReviews = MyJDBC.getReviews(product.getId());
+        boolean hasReviews = false;
+        
+        for (int i = 0; i < existingReviews.length; i++) 
+        {
+            if (existingReviews[i] != null) 
+            {
+                reviewsDisplay.append(existingReviews[i] + "\n\n");
+                hasReviews = true;
+            }
+        }
+        
+        // If there are no reviews, show the default msg
+        if (!hasReviews) 
+        {
+            reviewsDisplay.setText("Be the first to review this product!\n");
+        }
+        
+        reviewsDisplay.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        reviewsDisplay.setForeground(new Color(200, 200, 200));
+        reviewsDisplay.setBackground(new Color(30, 30, 30));
+        reviewsDisplay.setEditable(false);
+        reviewsDisplay.setLineWrap(true);
+        reviewsDisplay.setWrapStyleWord(true);
+        reviewsDisplay.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        JScrollPane scrollPane = new JScrollPane(reviewsDisplay);
+        scrollPane.setPreferredSize(new Dimension(800, 150));
+        scrollPane.setBorder(BorderFactory.createLineBorder(new Color(60, 60, 60)));
+        
+        scrollPane.getVerticalScrollBar().setBackground(new Color(40, 40, 40));
+        reviewSection.add(scrollPane, BorderLayout.CENTER);
+
+        // A new review
+        JPanel addReviewPanel = new JPanel(new BorderLayout(10, 0));
+        addReviewPanel.setOpaque(false);
+
+        JTextField newReviewField = new JTextField();
+        newReviewField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        newReviewField.setBackground(new Color(40, 40, 40));
+        newReviewField.setForeground(Color.WHITE);
+        newReviewField.setCaretColor(Color.WHITE);
+        newReviewField.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+
+        JButton submitReviewBtn = new JButton("Submit");
+        submitReviewBtn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        submitReviewBtn.setForeground(Color.BLACK);
+        submitReviewBtn.setBackground(CommonConstants.TEXT_COLOR);
+        submitReviewBtn.setFocusPainted(false);
+        submitReviewBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        submitReviewBtn.addActionListener(e -> 
+        {
+            String reviewText = newReviewField.getText().trim();
+            
+            if (reviewText.isEmpty()) 
+            {
+                return; // Nothing happens if the field is empty
+            }
+            
+            // Check for the right character length
+            if (reviewText.length() > 300) 
+            {
+                JOptionPane.showMessageDialog
+                (
+                    this,
+                    "Your review is too long! Please keep it under 300 characters.",
+                    "Review is too long",
+                    JOptionPane.WARNING_MESSAGE
+                );
+                return;
+            }
+            
+            // Save review to the DB
+            boolean success = MyJDBC.addReview(CommonConstants.currentUser, product.getId(), reviewText);
+            
+            if (success) 
+            {
+                // Temporarily update UI to show the new review instantly
+                if (reviewsDisplay.getText().contains("Be the first")) 
+                {
+                    reviewsDisplay.setText(""); // Clear the placeholder
+                }
+                
+                reviewsDisplay.append(CommonConstants.currentUser + ": " + reviewText + "\n\n");
+                newReviewField.setText(""); // Clear input field
+                
+                JOptionPane.showMessageDialog
+                (
+                    this,
+                    "Review submitted successfully!",
+                    "Success",
+                    JOptionPane.INFORMATION_MESSAGE
+                );
+            } 
+            else 
+            {
+                JOptionPane.showMessageDialog
+                (
+                    this,
+                    "Failed to submit review. Please try again.",
+                    "Database Error",
+                    JOptionPane.ERROR_MESSAGE
+                );
+            }
+        });
+
+        addReviewPanel.add(newReviewField, BorderLayout.CENTER);
+        addReviewPanel.add(submitReviewBtn, BorderLayout.EAST);
+
+        reviewSection.add(addReviewPanel, BorderLayout.SOUTH);
+
+        // Add the new section to the layout
+        contentArea.add(reviewSection, BorderLayout.CENTER);
+
         add(contentArea, BorderLayout.CENTER);
     }
 

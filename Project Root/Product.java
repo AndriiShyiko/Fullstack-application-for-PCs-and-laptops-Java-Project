@@ -9,9 +9,10 @@ public class Product
     private final String imagePath;
     private final String description;
     private final boolean isBookable; // true if product requires a booking date
+    private final int stockQuantity;
 
 
-    public Product(int id, String title, double price, String imagePath, String description, boolean isBookable)
+    public Product(int id, String title, double price, String imagePath, String description, boolean isBookable, int stockQuantity)
     {
         this.id = id;
         this.title = title;
@@ -19,6 +20,7 @@ public class Product
         this.imagePath = imagePath;
         this.description = description;
         this.isBookable = isBookable;
+        this.stockQuantity = stockQuantity;
     }
 
     public int getId() { return id; }
@@ -27,4 +29,5 @@ public class Product
     public String getImagePath() { return imagePath; }
     public String getDescription() { return description; }
     public boolean isBookable() { return isBookable;  }
+    public int getStockQuantity() { return stockQuantity; }
 }

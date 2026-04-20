@@ -183,20 +183,59 @@ public class Settings extends MainFrame
         String newAddress = addressField.getText().trim();
         String newDelivery = expressBtn.isSelected() ? "express" : "standard";
 
-        if (newUsername.isEmpty() || newPassword.isEmpty())
+        // 1. Validate Username
+        if (!isValidUsername(newUsername))
         {
             JOptionPane.showMessageDialog
             (
                 this,
-                "Username and password cannot be empty.",
+                "Username must be 3-20 characters long and contain only letters, numbers or underscores.",
                 "Validation Error",
                 JOptionPane.WARNING_MESSAGE
             );
             return;
         }
 
-        boolean success = MyJDBC.updateUser
-        (CommonConstants.currentUser, newUsername, newPassword, newEmail, newAddress, newDelivery);
+        // 2. Validate Password
+        if (!isValidPassword(newPassword))
+        {
+            JOptionPane.showMessageDialog
+            (
+                this,
+                "Password must be at least 6 characters long and contain at least one letter and one number.",
+                "Validation Error",
+                JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
+
+        // 3. Check if the email format is valid
+        if (!isValidEmail(newEmail))
+        {
+            JOptionPane.showMessageDialog
+            (
+                this,
+                "Please enter a valid email address (e.g. max@gmail.com).",
+                "Validation Error",
+                JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
+
+        // 4. Validate Address
+        if (!isValidAddress(newAddress))
+        {
+            JOptionPane.showMessageDialog
+            (
+                this,
+                "Please enter a valid delivery address (at least 5 characters).",
+                "Validation Error",
+                JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
+
+        boolean success = MyJDBC.updateUser(CommonConstants.currentUser, newUsername, newPassword, newEmail, newAddress, newDelivery);
 
         if (success) 
         {
@@ -358,5 +397,29 @@ public class Settings extends MainFrame
         btn.setFocusPainted(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         return btn;
+    }
+
+    private boolean isValidEmail(String email) 
+    {
+        // Standard Regex for email validation
+        String emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$";
+        return email.matches(emailRegex);
+    }
+    private boolean isValidUsername(String username) 
+    {
+        // Allows letters, numbers, and underscores, must be 3 to 20 characters long
+        String usernameRegex = "^[A-Za-z0-9_]{3,20}$";
+        return username.matches(usernameRegex);
+    }
+    private boolean isValidPassword(String password) 
+    {
+        // At least 6 characters, AND at least one letter and one number
+        String passwordRegex = "^(?=.*[A-Za-z])(?=.*\\d).{5,}$";
+        return password.matches(passwordRegex);
+    }
+    private boolean isValidAddress(String address) 
+    {
+        // Ensures the address isn't just empty spaces and is at least 5 characters long
+        return address != null && address.trim().length() >= 5;
     }
 }

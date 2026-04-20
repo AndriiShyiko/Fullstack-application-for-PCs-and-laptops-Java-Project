@@ -6,7 +6,6 @@ import java.io.File;
 
 public class ProductCard extends JPanel 
 {
-
     private static final int CARD_WIDTH = 200;
     private static final int CARD_HEIGHT = 280;
     private static final int IMAGE_HEIGHT = 160;
@@ -64,12 +63,35 @@ public class ProductCard extends JPanel
         priceLabel.setFont(new Font("Segoe UI", Font.BOLD, 15));
         priceLabel.setForeground(CommonConstants.TEXT_COLOR); // gold
 
+        // Stock quantity
+        JLabel stockLabel; 
+
+        if (product.getStockQuantity() <= 0)
+        {
+            stockLabel = new JLabel("Out of Stock");
+            stockLabel.setForeground(new Color(200, 60, 60));
+        }
+        else if (product.getStockQuantity() <= 3) // shows "Low stock" in red when <= 3, otherwise shows normally
+        {
+            stockLabel = new JLabel("Only " + product.getStockQuantity() + " left!");
+            stockLabel.setForeground(new Color(220, 120, 40)); // amber
+        }
+        else
+        {
+            stockLabel = new JLabel("In Stock: " + product.getStockQuantity());
+            stockLabel.setForeground(new Color(100, 180, 100)); // green
+        }
+
+        stockLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        stockLabel.setBorder(BorderFactory.createEmptyBorder(2, 0, 0, 0));
+
         // Bottom panel (title + price)
         JPanel infoPanel = new JPanel();
         infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
         infoPanel.setOpaque(false);
         infoPanel.add(titleLabel);
         infoPanel.add(priceLabel);
+        infoPanel.add(stockLabel);
 
         add(imageBtn, BorderLayout.NORTH);
         add(infoPanel,  BorderLayout.CENTER);

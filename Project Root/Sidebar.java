@@ -19,7 +19,7 @@ public class Sidebar extends JPanel
 
         JLabel logoLabel = new JLabel("Blade Forge Shop");
         logoLabel.setFont(new Font("Segoe UI", Font.BOLD, 17));
-        logoLabel.setForeground(CommonConstants.BORDER_ORANGE); // gold accent
+        logoLabel.setForeground(CommonConstants.BORDER_ORANGE);
          
         logoLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         logoLabel.setToolTipText("Click for Catalog Page");
@@ -58,6 +58,8 @@ public class Sidebar extends JPanel
         navPanel.add(createNavButton("Settings"));
         navPanel.add(Box.createRigidArea(new Dimension(0, 6)));
         navPanel.add(createNavButton("My Bookings"));
+        navPanel.add(Box.createRigidArea(new Dimension(0, 6)));
+        navPanel.add(createNavButton("i  Our Story"));
         navPanel.add(Box.createRigidArea(new Dimension(0, 6)));
         navPanel.add(createNavButton("Logout"));
 
@@ -141,6 +143,14 @@ public class Sidebar extends JPanel
 
                 // launch the new GUI
                 new MyBookingsPage().setVisible(true);
+            }
+            else if (text.contains("i  Our Story")) // company info
+            {
+                // dispose of this GUI
+                SwingUtilities.getWindowAncestor(this).dispose();
+
+                // launch the new GUI
+                new CompanyInfoPage().setVisible(true);
             }
         });
 
